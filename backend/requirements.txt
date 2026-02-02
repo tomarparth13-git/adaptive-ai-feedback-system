@@ -3,3 +3,4 @@ flask-cors
 textblob
 openai
 python-dotenv
+google-generativeai

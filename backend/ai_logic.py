@@ -1,10 +1,27 @@
+import os
 import random
+import logging
+import google.generativeai as genai
 from textblob import TextBlob
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(override=True)
 
 class AIEngine:
     def __init__(self):
         self.memory = []
-        self.max_memory = 3
+        self.max_memory = 5 # Context for Gemini
+        
+        # Initialize Gemini API
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if gemini_key:
+            genai.configure(api_key=gemini_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            print("DEBUG: Gemini API Initialized.")
+        else:
+            self.model = None
+            print("DEBUG: Gemini API Key not found!")
 
     def analyze_sentiment(self, text):
         blob = TextBlob(text)
@@ -16,6 +33,7 @@ class AIEngine:
     def detect_emotion_expert(self, text, polarity):
         """
         Expert Logic to detect emotion based on keywords and sentiment.
+        Determines the UI color.
         """
         text_lower = text.lower()
         
@@ -24,13 +42,13 @@ class AIEngine:
         if any(w in text_lower for w in danger_keywords):
             return "danger"
 
-        # 2. Anger (New)
-        anger_keywords = ["hate", "angry", "furious", "mad", "rage", "annoyed", "stupid", "idiot"]
+        # 2. Anger
+        anger_keywords = ["hate", "angry", "furious", "mad", "rage", "annoyed", "stupid", "idiot", "pissed", "frustrated"]
         if any(w in text_lower for w in anger_keywords):
             return "anger"
 
         # 3. Anxiety
-        anxiety_keywords = ["anxious", "scared", "worried", "nervous", "panic", "fear", "terrified", "doom"]
+        anxiety_keywords = ["anxious", "scared", "worried", "nervous", "panic", "fear", "terrified", "doom", "stress"]
         if any(w in text_lower for w in anxiety_keywords):
             return "anxious"
 
@@ -49,74 +67,75 @@ class AIEngine:
         if any(w in text_lower for w in happy_keywords):
             return "positive"
 
-        # 7. Fallback based on polarity
+        # Fallback based on polarity
         if polarity > 0.2: return "positive"
         if polarity < -0.2: return "sad"
         
         return "neutral"
 
-    def get_expert_response(self, text, emotion):
+    def generate_gemini_response(self, text, emotion):
         """
-        Generates formatted HTML response with <strong> tags for emphasis.
+        Calls Gemini to create a deep, empathetic response.
+        Enforces bolding and persona.
         """
-        
-        # SAFETY FIRST (No Bold, Gentle)
-        if emotion == "danger":
-            return (
-                "I hear that you are in deep pain. Please know you are not alone. "
-                "I am an AI, but there are people who care and want to help. "
-                "Please reach out to a trusted friend or a crisis helpline immediately."
+        if not self.model:
+            return None
+
+        try:
+            # Build memory context
+            history = ""
+            for mem in self.memory:
+                history += f"User: {mem['user_input']}\nAI: {mem['response_text']}\n"
+
+            prompt = (
+                f"You are 'Adaptive', a deeply empathetic and supportive AI friend. "
+                f"The user is currently feeling: {emotion}. "
+                f"Your goal is to provide profound psychological support and grounding. "
+                f"RULES:\n"
+                f"1. Be warm, human, and conversational.\n"
+                f"2. Use **bold text** for key advice or supportive actions.\n"
+                f"3. Keep it to 2-3 impactful sentences.\n"
+                f"4. If {emotion} is 'danger', be extremely gentle and DO NOT use bold text. Direct them to help.\n"
+                f"5. Reference the context if it helps.\n\n"
+                f"Context:\n{history}\n"
+                f"User's latest thought: {text}\n"
+                f"Adaptive:"
             )
 
-        # Response Templates with BOLD actions
-        responses = {
-            "anger": [
-                "I hear your frustration. It's valid to feel this way. Try to **take a deep breath** and step away for a moment.",
-                "Anger often protects us from other feelings. **Channel this energy** into something physical like a walk or writing it down.",
-                "It sounds intense. **Pause for 10 seconds** before you react. You are in control."
-            ],
-            "anxious": [
-                "I sense some anxiety. Let's ground ourselves. **Look at 5 things around you** and name them.",
-                "You are safe here. Try to **breathe in for 4 seconds, hold for 7, and exhale for 8**.",
-                "Anxiety tells stories that aren't always true. **Focus on just this one moment** right now."
-            ],
-            "stressed": [
-                "You're carrying a lot. Remember, **you can only do one thing at a time**. What is the smallest step you can take?",
-                "It's okay to pause. **Rest is productive too**. Give yourself permission to take a break.",
-                "Everything feels urgent, but it isn't. **Prioritize just one task** and let the rest accept a delay."
-            ],
-            "sad": [
-                "I'm sorry you're feeling down. **Be gentle with yourself** today. You don't have to 'fix' it immediately.",
-                "Sadness is heavy. **Wrap yourself in something warm** or drink some water. Small comforts matter.",
-                "It's okay not to be okay. **Allow yourself to feel this** without judgment. It will pass."
-            ],
-            "positive": [
-                "That's wonderful! **Hold onto this feeling**. What was the best part of it?",
-                "I love this energy! **Celebrate this win**, no matter how small.",
-                "It sounds like things are looking up. **Share this joy** with someone you care about."
-            ],
-            "neutral": [
-                "I'm listening. **Tell me more** about what's on your mind.",
-                "I hear you. **Reflect on how your day actually went**—was there a specific moment that stood out?",
-                "Just being here is enough. **Take a moment to check in** with your body."
-            ]
-        }
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
 
-        # Select a template
-        options = responses.get(emotion, responses["neutral"])
-        return random.choice(options)
+        except Exception as e:
+            print(f"DEBUG: Gemini Error: {e}")
+            return None
+
+    def get_fallback_expert_response(self, text, emotion):
+        """Expert system fallback if API fails"""
+        if emotion == "danger":
+            return "I hear that you are in deep pain. Please know you are not alone. Reach out to a trusted friend or a crisis helpline immediately."
+
+        # Simplified bold logic for fallback
+        responses = {
+            "anger": "I hear your frustration. **Take a deep breath** right now. You are valid, and I am here.",
+            "anxious": "You are safe. Try to **focus on your breathing** for a moment. This will pass.",
+            "sad": "I am so sorry you feel this way. **Be gentle with yourself** today. You are not alone.",
+            "positive": "That's amazing! **Hold onto this joy** as long as you can!",
+            "neutral": "I am listening. **Tell me more** about how you are feeling."
+        }
+        return responses.get(emotion, "I am here for you. **Tell me more**.")
 
     def process_input(self, text):
-        # 1. Analyze
         sentiment = self.analyze_sentiment(text)
-        
-        # 2. Detect Emotion (Expert Rule-Based)
         emotion = self.detect_emotion_expert(text, sentiment['polarity'])
         
-        # 3. Generate Smart Response
-        response_text = self.get_expert_response(text, emotion)
+        # Try Gemini First
+        response_text = self.generate_gemini_response(text, emotion)
         
-        # 4. Update Memory
+        # Fallback if Gemini fails
+        if not response_text:
+            response_text = self.get_fallback_expert_response(text, emotion)
+        
+        # Update Memory
         self.memory.append({
             "user_input": text,
             "response_text": response_text,
@@ -127,6 +146,6 @@ class AIEngine:
 
         return {
             "emotion": emotion,
-            "confidence": 0.95, # High confidence in our expert rules
+            "confidence": 1.0,
             "response_text": response_text
         }
