@@ -67,6 +67,11 @@ class AIEngine:
         if any(w in text_lower for w in happy_keywords):
             return "positive"
 
+        # 7. Inspiration
+        inspired_keywords = ["inspired", "creative", "wonder", "awe", "motivated", "vision", "goal", "dream"]
+        if any(w in text_lower for w in inspired_keywords):
+            return "inspired"
+
         # Fallback based on polarity
         if polarity > 0.2: return "positive"
         if polarity < -0.2: return "sad"
@@ -120,6 +125,7 @@ class AIEngine:
             "anxious": "You are safe. Try to **focus on your breathing** for a moment. This will pass.",
             "sad": "I am so sorry you feel this way. **Be gentle with yourself** today. You are not alone.",
             "positive": "That's amazing! **Hold onto this joy** as long as you can!",
+            "inspired": "This is a powerful moment! **Keep this momentum** and see where it takes you.",
             "neutral": "I am listening. **Tell me more** about how you are feeling."
         }
         return responses.get(emotion, "I am here for you. **Tell me more**.")

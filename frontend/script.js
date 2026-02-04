@@ -1,8 +1,6 @@
 const form = document.getElementById('input-form');
 const userInput = document.getElementById('user-input');
-const responseArea = document.getElementById('response-area');
-const aiText = document.getElementById('ai-text');
-const moodBadge = document.getElementById('mood-badge');
+const chatHistory = document.getElementById('chat-history');
 const submitBtn = document.getElementById('submit-btn');
 const btnText = document.querySelector('.btn-text');
 const btnLoader = document.querySelector('.btn-loader');
@@ -16,7 +14,8 @@ const emotionHues = {
     "sad": 210,       // Blue
     "positive": 140,  // Green
     "neutral": 220,   // Slate Blue
-    "danger": 0       // Red (Alarm)
+    "danger": 0,      // Red (Alarm)
+    "inspired": 45    // Gold/Yellow
 };
 
 form.addEventListener('submit', async (e) => {
@@ -24,7 +23,11 @@ form.addEventListener('submit', async (e) => {
     const text = userInput.value.trim();
     if (!text) return;
 
-    // UI Loading State
+    // 1. Add User Message to UI
+    appendMessage('user', text);
+    userInput.value = '';
+
+    // 2. UI Loading State
     setLoading(true);
 
     try {
@@ -37,7 +40,7 @@ form.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (data.status === 'success') {
-            displayResult(data.data);
+            displayAIResponse(data.data);
         } else {
             alert('Something went wrong. Please try again.');
         }
@@ -53,9 +56,8 @@ form.addEventListener('submit', async (e) => {
 function setLoading(isLoading) {
     if (isLoading) {
         submitBtn.disabled = true;
-        btnText.textContent = 'Analyzing...';
+        btnText.textContent = 'Reflecting...';
         btnLoader.classList.remove('hidden');
-        responseArea.classList.add('hidden');
     } else {
         submitBtn.disabled = false;
         btnText.textContent = 'Share';
@@ -63,24 +65,47 @@ function setLoading(isLoading) {
     }
 }
 
-function displayResult(data) {
+function appendMessage(role, text, emotion = null) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}-message`;
+
+    let contentHtml = '';
+    if (role === 'ai') {
+        contentHtml = `
+            <div class="ai-avatar">AI</div>
+            <div class="message-content">
+                ${emotion ? `<div class="mood-badge-container"><span class="mood-badge">${emotion}</span></div>` : ''}
+                <p>${text}</p>
+            </div>
+        `;
+    } else {
+        contentHtml = `
+            <div class="message-content">
+                <p>${text}</p>
+            </div>
+        `;
+    }
+
+    messageDiv.innerHTML = contentHtml;
+    chatHistory.appendChild(messageDiv);
+
+    // Smooth scroll to bottom
+    chatHistory.scrollTo({
+        top: chatHistory.scrollHeight,
+        behavior: 'smooth'
+    });
+}
+
+function displayAIResponse(data) {
     const { emotion, response_text } = data;
 
-    // 1. Update Text
-    aiText.innerHTML = response_text; // Use innerHTML for <strong> tags
-    moodBadge.textContent = emotion.charAt(0).toUpperCase() + emotion.slice(1);
+    // 1. Append AI Message
+    appendMessage('ai', response_text, emotion.charAt(0).toUpperCase() + emotion.slice(1));
 
-    // 2. Show Response Area
-    responseArea.classList.remove('hidden');
-
-    // 3. Update Theme Colors
+    // 2. Update Theme Colors
     const hue = emotionHues[emotion] || 220;
     document.body.setAttribute('data-mood', emotion);
-    console.log("Detected Emotion:", emotion, "Set Hue:", hue);
     updateTheme(hue);
-
-    // 4. Clear input
-    userInput.value = '';
 }
 
 function updateTheme(hue) {

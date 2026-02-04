@@ -8,11 +8,12 @@
 
     /* Brand/Mood Colors (Dynamic) */
     --accent-hue: 220;
-    /* Blue default */
-    --accent-saturation: 90%;
-    --accent-lightness: 60%;
+    --accent-saturation: 85%;
+    --accent-lightness: 65%;
     --accent-color: hsl(var(--accent-hue), var(--accent-saturation), var(--accent-lightness));
-    --accent-glow: hsl(var(--accent-hue), var(--accent-saturation), var(--accent-lightness), 0.5);
+    --accent-glow: hsla(var(--accent-hue), var(--accent-saturation), var(--accent-lightness), 0.4);
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -59,6 +60,10 @@ body[data-mood="danger"] {
     background-color: #450a0a;
 }
 
+body[data-mood="inspired"] {
+    background-color: #2b240a;
+}
+
 /* Ambient Background */
 .background-gradients {
     position: absolute;
@@ -72,14 +77,14 @@ body[data-mood="danger"] {
 
 .blob {
     position: absolute;
-    width: 60vw;
-    height: 60vw;
-    background: var(--accent-glow);
-    filter: blur(100px);
+    width: 70vw;
+    height: 70vw;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    filter: blur(80px);
     border-radius: 50%;
-    opacity: 0.6;
-    transition: background 1.2s ease;
-    animation: floating 20s infinite alternate;
+    opacity: 0.5;
+    transition: background 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: floating 25s infinite alternate ease-in-out;
 }
 
 .blob-1 {
@@ -119,15 +124,22 @@ header {
 }
 
 h1 {
-    font-size: 3rem;
-    font-weight: 600;
-    letter-spacing: -1.5px;
-    background: linear-gradient(135deg, #fff, var(--accent-color));
+    font-size: 3.5rem;
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(to right, #fff, var(--accent-color), #fff);
+    background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
-    transition: 0.5s;
+    animation: shine 5s linear infinite;
+}
+
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
 }
 
 .subtitle {
@@ -156,11 +168,39 @@ h1 {
     border-color: var(--accent-glow);
 }
 
-/* Response Area */
-.response-area {
+/* Chat History */
+.chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.chat-history::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 10px;
+}
+
+.message {
     display: flex;
     gap: 1.2rem;
-    animation: fadeIn 0.8s ease-out;
+    animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-message {
+    flex-direction: row-reverse;
+}
+
+.user-message .message-content {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px 0 20px 20px;
+    border-color: var(--accent-glow);
 }
 
 .hidden {
@@ -191,18 +231,22 @@ h1 {
     border: 1px solid var(--glass-border);
 }
 
+.mood-badge-container {
+    margin-bottom: 0.75rem;
+}
+
 .mood-badge {
     display: inline-block;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     color: var(--accent-color);
     font-weight: 700;
-    margin-bottom: 0.75rem;
-    border: 1.5px solid var(--accent-color);
-    padding: 4px 12px;
+    border: 1px solid var(--accent-color);
+    padding: 2px 10px;
     border-radius: 100px;
-    transition: 0.5s;
+    transition: 0.4s;
+    background: hsla(var(--accent-hue), 80%, 50%, 0.1);
 }
 
 #ai-text {
@@ -263,7 +307,26 @@ button {
 button:hover {
     filter: brightness(1.2);
     transform: scale(1.05) translateY(-2px);
-    box-shadow: 0 8px 25px var(--accent-glow);
+    box-shadow: 0 8px 30px var(--accent-glow);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.btn-loader {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #000;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes fadeIn {
