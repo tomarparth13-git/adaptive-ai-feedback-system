@@ -18,6 +18,28 @@ const emotionHues = {
     "inspired": 45    // Gold/Yellow
 };
 
+// Voice Settings
+let voiceEnabled = true;
+const voiceToggleBtn = document.getElementById('voice-toggle');
+const voiceStatus = document.querySelector('.voice-status');
+
+// Speech Synthesis
+const synth = window.speechSynthesis;
+let currentUtterance = null;
+
+// Voice parameters based on emotion
+const emotionVoiceSettings = {
+    "anxious": { pitch: 1.1, rate: 0.9 },
+    "stressed": { pitch: 1.0, rate: 1.1 },
+    "anger": { pitch: 0.9, rate: 1.2 },
+    "sad": { pitch: 0.8, rate: 0.8 },
+    "positive": { pitch: 1.2, rate: 1.1 },
+    "neutral": { pitch: 1.0, rate: 1.0 },
+    "danger": { pitch: 0.9, rate: 0.85 },
+    "inspired": { pitch: 1.15, rate: 1.05 }
+};
+
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = userInput.value.trim();
@@ -106,9 +128,74 @@ function displayAIResponse(data) {
     const hue = emotionHues[emotion] || 220;
     document.body.setAttribute('data-mood', emotion);
     updateTheme(hue);
+
+    // 3. Speak the response with emotion-based voice
+    speak(response_text, emotion);
 }
 
 function updateTheme(hue) {
     // Smoothly transition CSS variable
     root.style.setProperty('--accent-hue', hue);
+}
+
+// Voice Toggle
+voiceToggleBtn.addEventListener('click', () => {
+    voiceEnabled = !voiceEnabled;
+    voiceToggleBtn.classList.toggle('active', voiceEnabled);
+    voiceStatus.textContent = voiceEnabled ? 'Voice: ON' : 'Voice: OFF';
+
+    // Stop any ongoing speech
+    if (!voiceEnabled && synth.speaking) {
+        synth.cancel();
+    }
+});
+
+// Initialize voice toggle as active
+voiceToggleBtn.classList.add('active');
+
+// Text-to-Speech Function
+function speak(text, emotion = 'neutral') {
+    // Stop any ongoing speech
+    if (synth.speaking) {
+        synth.cancel();
+    }
+
+    if (!voiceEnabled) return;
+
+    // Remove HTML tags and markdown formatting for clean speech
+    const cleanText = text
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/\*\*/g, '')     // Remove bold markdown
+        .replace(/\*/g, '');      // Remove italic markdown
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Apply emotion-based voice settings
+    const voiceSettings = emotionVoiceSettings[emotion] || emotionVoiceSettings['neutral'];
+    utterance.pitch = voiceSettings.pitch;
+    utterance.rate = voiceSettings.rate;
+    utterance.volume = 0.9;
+
+    // Try to use a more natural voice if available
+    const voices = synth.getVoices();
+    const preferredVoice = voices.find(voice =>
+        voice.name.includes('Google') ||
+        voice.name.includes('Microsoft') ||
+        voice.lang.startsWith('en')
+    );
+
+    if (preferredVoice) {
+        utterance.voice = preferredVoice;
+    }
+
+    currentUtterance = utterance;
+    synth.speak(utterance);
+}
+
+
+// Load voices (some browsers need this)
+if (synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = () => {
+        synth.getVoices();
+    };
 }
